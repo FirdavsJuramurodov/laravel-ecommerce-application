@@ -4,29 +4,49 @@ namespace App\Http\Middleware;
 
 use App\Providers\RouteServiceProvider;
 use Closure;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Arr;
 
 class RedirectIfAuthenticated
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @param  string|null  ...$guards
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
-     */
-    public function handle(Request $request, Closure $next, ...$guards)
-    {
-        $guards = empty($guards) ? [null] : $guards;
-
-        foreach ($guards as $guard) {
+    public function handle($request, Closure $next, $guard = null)
+{
+    switch($guard){
+        case 'admin':
             if (Auth::guard($guard)->check()) {
-                return redirect(RouteServiceProvider::HOME);
+                return redirect('/admin');
             }
-        }
-
-        return $next($request);
+            break;
+        default:
+            if (Auth::guard($guard)->check()) {
+                return redirect('/');
+            }
+            break;
     }
+    return $next($request);
+}
+
+    protected function unauthenticated(Request $request, AuthenticationException $exception)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $exception->getMessage()], 401);
+            echo "lol";
+        }
+        $guard = Arr::get($exception->guards(), 0);
+        switch($guard){
+            case 'admin':
+                $login = 'admin.login';
+                echo "lol3";
+                break;
+            default:
+                $login = 'login';
+                echo "lol4";
+                break;
+        }
+        return redirect()->guest(route($login));
+    }
+
+
 }
